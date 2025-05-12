@@ -1,0 +1,125 @@
+import pygame
+from pygame import *
+
+pygame.init()
+
+class GameSprite(sprite.Sprite):
+    def __init__(self, player_image, player_x, player_y, player_speed):
+        super().__init__()
+        self.image = transform.scale(image.load(player_image), (65, 65))
+        self.speed = player_speed
+        self.rect = self.image.get_rect()
+        self.rect.x = player_x
+        self.rect.y = player_y
+
+    def reset(self, window):
+        window.blit(self.image, (self.rect.x, self.rect.y))
+
+
+class Player(GameSprite):
+    def update(self):
+        keys = key.get_pressed()
+        if keys[K_LEFT] and self.rect.x > 5:
+            self.rect.x -= self.speed
+        if keys[K_RIGHT] and self.rect.x < win_width - 80:
+            self.rect.x += self.speed
+        if keys[K_UP] and self.rect.y > 5:
+            self.rect.y -= self.speed
+        if keys[K_DOWN] and self.rect.y < win_height - 80:
+            self.rect.y += self.speed
+
+
+class Enemy(GameSprite):
+    def __init__(self, player_image, player_x, player_y, player_speed):
+        super().__init__(player_image, player_x, player_y, player_speed)
+        self.direction = "left"
+
+    def update(self):
+        if self.rect.x <= 100:
+            self.direction = "right"
+        if self.rect.x >= win_width - 85:
+            self.direction = "left"
+
+        if self.direction == "left":
+            self.rect.x -= self.speed
+        else:
+            self.rect.x += self.speed
+
+
+class Wall(sprite.Sprite):
+    def __init__(self, color_1, color_2, color_3, wall_x, wall_y, wall_width, wall_height):
+        super().__init__()
+        self.image = Surface((wall_width, wall_height))
+        self.image.fill((color_1, color_2, color_3))
+        self.rect = self.image.get_rect()
+        self.rect.x = wall_x
+        self.rect.y = wall_y
+
+    def draw_wall(self, window):
+        window.blit(self.image, (self.rect.x, self.rect.y))
+
+win_width = 700
+win_height = 500
+window = display.set_mode((win_width, win_height))
+display.set_caption("Maze")
+
+background = transform.scale(image.load("background.jpg"), (win_width, win_height))
+
+player = Player("hero.png", 5, win_height - 80, 4)
+monster = Enemy("cyborg.png", win_width - 80, 280, 2)
+treasure = GameSprite("treasure.png", win_width - 120, win_height - 80, 0)
+
+walls = [
+    Wall(0, 255, 0, 100, 20, 10, 400),
+    Wall(0, 255, 0, 200, 100, 10, 400),
+    Wall(0, 255, 0, 300, 20, 10, 400),
+    Wall(0, 255, 0, 400, 100, 10, 400),
+    Wall(0, 255, 0, 500, 20, 10, 400),    
+]
+
+mixer.init()
+mixer.music.load("jungles.ogg")
+mixer.music.play(-1)
+
+font.init()
+font1 = font.SysFont("Arial", 70)
+win_text = font1.render("YOU WIN!", True, (255, 215, 0))
+lose_text = font1.render("YOU LOSE!", True, (255, 0, 0))
+
+game = True
+finish = False
+clock = time.Clock()
+FPS = 60
+
+while game:
+    for event in pygame.event.get():
+        if event.type == QUIT:
+            game = False
+
+    if not finish:
+        window.blit(background, (0, 0))
+
+        player.update()
+        monster.update()
+
+        player.reset(window)
+        monster.reset(window)
+        treasure.reset(window)
+
+        for wall in walls:
+            wall.draw_wall(window)
+
+        if player.rect.colliderect(monster.rect):
+            finish = True
+            window.blit(lose_text, (200, 200))
+        elif any(player.rect.colliderect(w.rect) for w in walls):
+            finish = True
+            window.blit(lose_text, (200, 200))
+        elif player.rect.colliderect(treasure.rect):
+            finish = True
+            window.blit(win_text, (200, 200))
+
+    display.update()
+    clock.tick(FPS)
+
+pygame.quit()
